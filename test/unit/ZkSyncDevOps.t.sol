@@ -27,3 +27,12 @@ contract ZkSyncDevOps is Test, ZkSyncChainChecker, FoundryZkSyncChecker {
     //     assert(exists);
     // }
 }
+
+
+
+//skipZkSync跳过ZkSync链测试
+//onlyVanillaFoundry只在原生Foundry环境中运行测试
+//onlyZkSync只在ZkSync环境中运行测试
+//skipVanillaFoundry跳过原生Foundry环境测试
+//有些测试只能在ZkSync链上运行，有些只能在原生Foundry环境中运行
+//这些修饰符帮助我们控制测试的运行环境
