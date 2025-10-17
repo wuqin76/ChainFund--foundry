@@ -11,7 +11,6 @@ contract ZkSyncDevOps is Test, ZkSyncChainChecker, FoundryZkSyncChecker {
         address ripemd = address(uint160(3));
 
         bool success;
-        // Don't worry about what this "assembly" thing is for now
         assembly {
             success := call(gas(), ripemd, 0, 0, 0, 0, 0)
         }

@@ -31,6 +31,7 @@ contract FundMeTest is Test {
         console.log("Owner:", fundMe.getOwner());
         console.log("This contract:", address(this));
     }
+
     function testPriceFeedVersionIsAccurate() public view {
         uint version = fundMe.getVersion();
         console.log("Price Feed Version:", version);
@@ -111,6 +112,102 @@ contract FundMeTest is Test {
 
         vm.prank(fundMe.getOwner()); //让下一个调用者变成owner
         fundMe.withdraw();
+        //assert
+        uint256 endingOwnerBalance = fundMe.getOwner().balance;
+        uint256 endingFundMeBalance = address(fundMe).balance;
+        assertEq(endingFundMeBalance, 0);
+        assertEq(
+            startingFundMeBalance + startingOwnerBalance,
+            endingOwnerBalance
+        );
+    }
+
+    function testWithdrawCheaperWithMultipleFunders() public funded {
+        //arrange
+        uint160 numberOfFunders = 10;
+        uint160 startingFunderIndex = 2;
+
+        for (uint160 i = startingFunderIndex; i < numberOfFunders; i++) {
+            hoax(address(i), SEND_VALUE);
+            fundMe.fund{value: SEND_VALUE}();
+        }
+
+        uint256 startingOwnerBalance = fundMe.getOwner().balance;
+        uint256 startingFundMeBalance = address(fundMe).balance;
+
+        //act
+        vm.prank(fundMe.getOwner());
+        fundMe.withdrawCheaper();
+
+        //assert
+        uint256 endingOwnerBalance = fundMe.getOwner().balance;
+        uint256 endingFundMeBalance = address(fundMe).balance;
+        assertEq(endingFundMeBalance, 0);
+        assertEq(
+            startingFundMeBalance + startingOwnerBalance,
+            endingOwnerBalance
+        );
+    }
+
+    function testReceiveFunctionFundsProperly() public {
+        // 测试 receive() 函数
+        vm.prank(USER);
+        (bool success, ) = address(fundMe).call{value: SEND_VALUE}("");
+        require(success, "Transfer failed");
+
+        uint256 amountFunded = fundMe.getAddressToAmountFunded(USER);
+        assertEq(amountFunded, SEND_VALUE);
+        assertEq(fundMe.getFunder(0), USER);
+    }
+
+    function testFallbackFunctionFundsProperly() public {
+        // 测试 fallback() 函数
+        vm.prank(USER);
+        (bool success, ) = address(fundMe).call{value: SEND_VALUE}(
+            "randomData"
+        );
+        require(success, "Transfer failed");
+
+        uint256 amountFunded = fundMe.getAddressToAmountFunded(USER);
+        assertEq(amountFunded, SEND_VALUE);
+        assertEq(fundMe.getFunder(0), USER);
+    }
+
+    function testGetFunderReturnsCorrectAddress() public {
+        // 添加多个捐款者
+        vm.prank(USER);
+        fundMe.fund{value: SEND_VALUE}();
+
+        address user2 = makeAddr("user2");
+        vm.deal(user2, STARTING_BALANCE);
+        vm.prank(user2);
+        fundMe.fund{value: SEND_VALUE}();
+
+        assertEq(fundMe.getFunder(0), USER);
+        assertEq(fundMe.getFunder(1), user2);
+    }
+
+    function testMultipleFundCallsFromSameUser() public {
+        // 测试同一用户多次捐款
+        vm.startPrank(USER);
+        fundMe.fund{value: SEND_VALUE}();
+        fundMe.fund{value: SEND_VALUE}();
+        fundMe.fund{value: SEND_VALUE}();
+        vm.stopPrank();
+
+        uint256 totalFunded = fundMe.getAddressToAmountFunded(USER);
+        assertEq(totalFunded, SEND_VALUE * 3);
+    }
+
+    function testWithdrawCheaperWithSingleFunder() public funded {
+        //arrange
+        uint256 startingOwnerBalance = fundMe.getOwner().balance;
+        uint256 startingFundMeBalance = address(fundMe).balance;
+
+        //act
+        vm.prank(fundMe.getOwner());
+        fundMe.withdrawCheaper();
+
         //assert
         uint256 endingOwnerBalance = fundMe.getOwner().balance;
         uint256 endingFundMeBalance = address(fundMe).balance;

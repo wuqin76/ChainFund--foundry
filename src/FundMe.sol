@@ -95,7 +95,7 @@ contract FundMe {
         return s_funders[index];
     }
 
-    function getOwner() external view returns (address) {
+    function getOwner() public view returns (address) {
         return i_owner;
     }
 }

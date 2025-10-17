@@ -7,32 +7,37 @@ import {FundMe} from "../../src/FundMe.sol";
 import {DeployFundMe} from "../../script/DeployFundMe.s.sol";
 import {FundFundMe, WithdrawFundMe} from "../../script/Interactions.s.sol";
 
-contract IntergrationsTest is
-    Test //这个函数用来测试Interactions脚本
-{
+contract IntergrationsTest is Test {
     address USER = makeAddr("user");
-    //makeAddr是forge-std自带的一个函数，可以生成一个地址,用这个地址调用fund函数进行测试
     uint256 constant STARTING_BALANCE = 10 ether;
     uint256 constant SEND_VALUE = 0.1 ether;
     FundMe fundMe;
 
-    function setUp() external {   // 注意大写的 U
-        DeployFundMe deploy = new DeployFundMe(); //DeployFundMe合约实例化
+    function setUp() external {
+        DeployFundMe deploy = new DeployFundMe();
         fundMe = deploy.run();
         vm.deal(USER, STARTING_BALANCE);
         console.log("FundMe address:", address(fundMe));
-    } //部署FundMe合约，并给USER地址转账10ETH
+    }
 
     function testUserCanFundInteractions() public {
+        // 创建 FundFundMe 脚本合约
         FundFundMe fundFundMe = new FundFundMe();
+
+        // 给 FundFundMe 合约分配 ETH（它需要 ETH 来调用 fund）
+        vm.deal(address(fundFundMe), 1 ether);
+
+        // 捐款
         fundFundMe.fundFundMe(address(fundMe));
 
-        WithdrawFundMe withdrawFundMe = new WithdrawFundMe();
-        withdrawFundMe.withdrawFundMe(address(fundMe));
+        // 获取合约 owner
+        address fundMeOwner = fundMe.getOwner();
 
+        // 模拟 owner 直接调用 withdraw
+        vm.prank(fundMeOwner);
+        fundMe.withdraw();
+
+        // 验证余额为 0
         assertEq(address(fundMe).balance, 0);
     }
 }
-
-
-//这个合约实现了集成测试，测试了Interactions脚本中的捐款和提现功能
